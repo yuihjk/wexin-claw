@@ -1,0 +1,17 @@
+{
+  "name": "codex-claw",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "channel-worker": "tsx src/channel-worker.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "wx-channel-wrapper": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}

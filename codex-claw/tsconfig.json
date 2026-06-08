@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "../openclaw-weixin/src/vendor.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

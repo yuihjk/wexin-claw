@@ -1,0 +1,3 @@
+[submodule "openclaw-weixin"]
+	path = openclaw-weixin
+	url = https://github.com/yuihjk/openclaw-weixin.git

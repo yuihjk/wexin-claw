@@ -1,0 +1,8 @@
+packages:
+  - openclaw-weixin
+  - wx-channel-wrapper
+  - wx-channel-demo
+  - codex-claw
+confirmModulesPurge: false
+allowBuilds:
+  esbuild: true

@@ -1,0 +1,16 @@
+{
+  "name": "wechat-bot-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "pnpm -r --if-present typecheck",
+    "demo": "pnpm --filter wx-channel-demo dev",
+    "claw": "pnpm --filter codex-claw dev"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.8.0"
+  }
+}
