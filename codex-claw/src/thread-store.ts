@@ -23,6 +23,13 @@ export class ThreadStore {
     return this.data[senderId]?.threadId;
   }
 
+  findSenderByThread(threadId: string): string | undefined {
+    for (const [senderId, record] of Object.entries(this.data)) {
+      if (record.threadId === threadId) return senderId;
+    }
+    return undefined;
+  }
+
   set(senderId: string, threadId: string): void {
     this.data[senderId] = { threadId, updatedAt: new Date().toISOString() };
     this.save();

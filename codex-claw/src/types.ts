@@ -24,6 +24,7 @@ export type ClawConfig = {
   codexModel?: string;
   codexSandbox?: "read-only" | "workspace-write" | "danger-full-access";
   codexApprovalPolicy?: string;
+  codexApprovalsReviewer?: "user" | "auto_review";
 };
 
 export type InboundWeixinMessage = {

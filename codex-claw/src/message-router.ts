@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { ChannelSupervisor } from "./channel-supervisor.js";
-import type { CodexAppServerClient } from "./codex-app-server.js";
+import type { CodexAppServerClient, CodexApprovalRequest } from "./codex-app-server.js";
 import { handleCommand } from "./commands.js";
 import type { Logger } from "./logger.js";
 import { SenderQueue } from "./sender-queue.js";
@@ -11,6 +11,7 @@ import { ThreadStore } from "./thread-store.js";
 
 export class MessageRouter {
   private readonly queue: SenderQueue;
+  private readonly pendingApprovals = new Map<string, CodexApprovalRequest>();
 
   constructor(
     private readonly config: ClawConfig,
@@ -32,6 +33,8 @@ export class MessageRouter {
         await this.channel.sendText(senderId, "等待队列太长，已丢弃较早的待处理消息。");
       },
     });
+
+    this.codex.setApprovalHandler((request) => this.handleApprovalRequest(request));
   }
 
   async handleInbound(message: InboundWeixinMessage): Promise<void> {
@@ -41,6 +44,8 @@ export class MessageRouter {
       this.logger.info(`router ignored empty message from=${shortId(message.from)} message=${message.messageId}`);
       return;
     }
+
+    if (await this.handleApprovalReply(message.from, text)) return;
 
     const commandReply = handleCommand(text, {
       senderId: message.from,
@@ -87,7 +92,47 @@ export class MessageRouter {
       } catch (sendErr) {
         this.logger.error(`failed to send Codex error to sender=${shortId(senderId)}: ${String(sendErr)}`);
       }
+    } finally {
+      this.pendingApprovals.delete(senderId);
     }
+  }
+
+  private async handleApprovalRequest(request: CodexApprovalRequest): Promise<void> {
+    const senderId = request.threadId ? this.threadStore.findSenderByThread(request.threadId) : undefined;
+    if (!senderId) {
+      this.logger.warn(`approval request has no matching sender id=${request.id} thread=${request.threadId ?? "unknown"}`);
+      this.codex.resolveApproval(request.id, "decline");
+      return;
+    }
+
+    this.pendingApprovals.set(senderId, request);
+    await this.channel.sendText(senderId, request.message);
+    this.logger.info(`approval request sent sender=${shortId(senderId)} id=${request.id} method=${request.method}`);
+  }
+
+  private async handleApprovalReply(senderId: string, text: string): Promise<boolean> {
+    const request = this.pendingApprovals.get(senderId);
+    if (!request) return false;
+
+    const choice = parseApprovalChoice(text);
+    if (choice) {
+      this.codex.resolveApproval(request.id, choice);
+      this.pendingApprovals.delete(senderId);
+      return true;
+    }
+
+    if (!request.threadId || !request.turnId) {
+      await this.channel.sendText(senderId, "当前审批请求缺少 turnId，无法把这条消息作为用户意见发送。请回复：\n1: accept 2: decline");
+      return true;
+    }
+
+    try {
+      await this.codex.steerTurn(request.threadId, request.turnId, text);
+    } catch (err) {
+      this.logger.warn(`approval steer failed sender=${shortId(senderId)} id=${request.id}: ${String(err)}`);
+      await this.channel.sendText(senderId, `发送用户意见失败：${String(err)}\n请回复：\n1: accept 2: decline`);
+    }
+    return true;
   }
 
   private async resolveThread(senderId: string): Promise<string> {
@@ -111,4 +156,11 @@ export class MessageRouter {
 function shortId(value: string): string {
   if (value.length <= 10) return value;
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+function parseApprovalChoice(text: string): "accept" | "decline" | undefined {
+  const normalized = text.trim().toLowerCase();
+  if (normalized === "1" || normalized === "accept") return "accept";
+  if (normalized === "2" || normalized === "decline") return "decline";
+  return undefined;
 }

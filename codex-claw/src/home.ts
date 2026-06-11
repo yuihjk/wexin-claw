@@ -70,6 +70,7 @@ export function loadConfig(): { paths: AppPaths; config: ClawConfig } {
       codexModel: process.env.CODEX_CLAW_CODEX_MODEL?.trim() || undefined,
       codexSandbox: parseSandbox(process.env.CODEX_CLAW_CODEX_SANDBOX) ?? "workspace-write",
       codexApprovalPolicy: process.env.CODEX_CLAW_CODEX_APPROVAL_POLICY?.trim() || undefined,
+      codexApprovalsReviewer: parseApprovalsReviewer(process.env.CODEX_CLAW_CODEX_APPROVALS_REVIEWER) ?? "auto_review",
     },
   };
 }
@@ -86,6 +87,12 @@ function parseAppServerMode(value: string | undefined): ClawConfig["codexAppServ
   const trimmed = value?.trim();
   if (trimmed === "proxy") return "proxy";
   return "direct";
+}
+
+function parseApprovalsReviewer(value: string | undefined): ClawConfig["codexApprovalsReviewer"] {
+  const trimmed = value?.trim();
+  if (trimmed === "user" || trimmed === "auto_review") return trimmed;
+  return undefined;
 }
 
 function parseBool(value: string | undefined, fallback: boolean): boolean {

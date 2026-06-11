@@ -32,6 +32,10 @@ export function isChannelRequest(message: unknown): message is ChannelRequest {
 }
 
 export function sendToParent(message: ChannelEvent | ChannelResponse): void {
+  if (process.env.CODEX_CLAW_CHANNEL_TRANSPORT === "stdio") {
+    process.stdout.write(`${JSON.stringify(message)}\n`);
+    return;
+  }
   if (!process.send) return;
   process.send(message);
 }

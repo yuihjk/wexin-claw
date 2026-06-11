@@ -1,9 +1,20 @@
 import path from "node:path";
+import readline from "node:readline";
 
 import { buildPaths, ensureHomeLayout } from "./home.js";
 import { isChannelRequest, sendToParent, type ChannelRequest } from "./channel-rpc.js";
 
 let stopping = false;
+const stdioTransport = process.env.CODEX_CLAW_CHANNEL_TRANSPORT === "stdio";
+
+if (stdioTransport) {
+  console.log = (...args: unknown[]) => {
+    process.stderr.write(`${args.map(String).join(" ")}\n`);
+  };
+  console.error = (...args: unknown[]) => {
+    process.stderr.write(`${args.map(String).join(" ")}\n`);
+  };
+}
 
 async function resolveCredentials(wrapper: typeof import("wx-channel-wrapper")) {
   const envCredentials = wrapper.loadCredentialsFromEnv();
@@ -65,10 +76,23 @@ async function main(): Promise<void> {
     });
   });
 
-  process.on("message", (raw) => {
-    if (!isChannelRequest(raw)) return;
-    void handleRequest(raw, channel);
-  });
+  if (stdioTransport) {
+    readline.createInterface({ input: process.stdin }).on("line", (line) => {
+      let raw: unknown;
+      try {
+        raw = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (!isChannelRequest(raw)) return;
+      void handleRequest(raw, channel);
+    });
+  } else {
+    process.on("message", (raw) => {
+      if (!isChannelRequest(raw)) return;
+      void handleRequest(raw, channel);
+    });
+  }
 
   process.once("disconnect", () => void stop(channel, "parent disconnect"));
   process.once("SIGINT", () => void stop(channel, "SIGINT"));
